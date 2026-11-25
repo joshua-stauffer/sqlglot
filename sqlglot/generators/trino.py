@@ -8,6 +8,7 @@ from sqlglot.dialects.dialect import (
     groupconcat_sql,
     rename_func,
 )
+from sqlglot.generator import unsupported_args
 from sqlglot.generators.presto import PrestoGenerator, amend_exploded_column_table
 
 
@@ -54,6 +55,10 @@ class TrinoGenerator(PrestoGenerator):
         exp.JSONPathRoot,
         exp.JSONPathSubscript,
     }
+
+    @unsupported_args("this")
+    def currentschema_sql(self, expression: exp.CurrentSchema) -> str:
+        return "CURRENT_SCHEMA"
 
     def concatws_sql(self, expression: exp.ConcatWs) -> str:
         if expression.args.get("flatten"):
