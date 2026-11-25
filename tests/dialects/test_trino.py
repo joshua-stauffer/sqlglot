@@ -50,22 +50,11 @@ class TestTrino(Validator):
                 self.parse_one(f"EXECUTE IMMEDIATE 'SELECT ?' USING {arguments}")
 
     def test_current_schema(self):
-        for sql in ("SELECT current_schema", "SELECT CURRENT_SCHEMA"):
-            with self.subTest(sql):
-                self.validate_identity(sql, "SELECT CURRENT_SCHEMA").selects[0].assert_is(
-                    exp.CurrentSchema
-                )
-
-        self.validate_identity("SELECT current_schema()", "SELECT CURRENT_SCHEMA").selects[
-            0
-        ].assert_is(exp.CurrentSchema)
+        self.validate_identity("SELECT CURRENT_SCHEMA").selects[0].assert_is(exp.CurrentSchema)
+        self.validate_identity("SELECT current_schema", "SELECT CURRENT_SCHEMA")
+        self.validate_identity("SELECT current_schema()", "SELECT CURRENT_SCHEMA")
         self.validate_identity("SELECT t.current_schema").selects[0].assert_is(exp.Column)
         self.validate_identity('SELECT "current_schema"').selects[0].assert_is(exp.Column)
-        self.validate_all(
-            "SELECT CURRENT_SCHEMA",
-            read={"postgres": "SELECT CURRENT_SCHEMA"},
-            write={"postgres": "SELECT CURRENT_SCHEMA", "trino": "SELECT CURRENT_SCHEMA"},
-        )
         self.validate_all("SELECT current_schema(1)", write={"trino": UnsupportedError})
 
     def test_array_remove(self):

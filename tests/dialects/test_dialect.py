@@ -4822,6 +4822,7 @@ FROM subquery2""",
                 "sqlite": "'main'",
                 "mysql": "SCHEMA()",
                 "postgres": "CURRENT_SCHEMA",
+                "trino": "CURRENT_SCHEMA",
                 "tsql": "SCHEMA_NAME()",
             },
         )
