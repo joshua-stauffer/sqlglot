@@ -38,6 +38,13 @@ def _build_approx_percentile(args: list) -> exp.Expr:
 def _build_date_trunc(args: list) -> exp.DateTrunc | exp.TimestampTrunc:
     # Presto/Trino DATE_TRUNC returns the type of its input
     trunc = date_trunc_to_time(args)
+
+    # Presto's and Trino's weeks start on Monday, so WEEK is WEEK(MONDAY) for dialects,
+    # such as BigQuery, where a bare WEEK means WEEK(SUNDAY)
+    unit = trunc.args.get("unit")
+    if isinstance(unit, (exp.Literal, exp.Var)) and unit.name.upper() == "WEEK":
+        trunc.set("unit", exp.WeekStart(this=exp.var("MONDAY")))
+
     trunc.set("input_type_preserved", True)
     return trunc
 

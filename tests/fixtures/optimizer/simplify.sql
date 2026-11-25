@@ -1463,6 +1463,11 @@ CAST('2023-12-11' AS DATE);
 DATE_TRUNC('week', x) > CAST('2023-12-11' AS DATE);
 x >= CAST('2023-12-18' AS DATE);
 
+-- Presto and Trino weeks start on Monday
+# dialect: trino
+DATE_TRUNC('WEEK', CAST('2024-05-09' AS DATE));
+CAST('2024-05-06' AS DATE);
+
 DATE_TRUNC('week', x) = CAST('2023-12-11' AS DATE);
 x < CAST('2023-12-18' AS DATE) AND x >= CAST('2023-12-11' AS DATE);
 

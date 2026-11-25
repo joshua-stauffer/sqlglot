@@ -610,6 +610,30 @@ class TestPresto(Validator):
             "SELECT CAST(DATE_TRUNC('MONTH', t.d) AS DATE) FROM t",
         )
 
+    def test_date_trunc_week(self):
+        # Presto's weeks start on Monday, so its WEEK unit is spelled WEEK(MONDAY) for
+        # dialects that let a truncation choose the week start day
+        for dialect in ("presto", "trino", "athena"):
+            with self.subTest(dialect):
+                expression = parse_one("DATE_TRUNC('WEEK', ts)", read=dialect)
+                self.assertIsInstance(expression, exp.TimestampTrunc)
+                self.assertEqual(expression.args["unit"], exp.WeekStart(this=exp.var("MONDAY")))
+                self.assertEqual(expression.sql(dialect), "DATE_TRUNC('WEEK', ts)")
+                self.assertEqual(expression.sql("bigquery"), "TIMESTAMP_TRUNC(ts, WEEK(MONDAY))")
+                self.assertEqual(expression.sql("duckdb"), "DATE_TRUNC('WEEK', ts)")
+
+                expression = parse_one("DATE_TRUNC('week', CAST(d AS DATE))", read=dialect)
+                self.assertIsInstance(expression, exp.DateTrunc)
+                self.assertEqual(expression.args["unit"], exp.WeekStart(this=exp.var("MONDAY")))
+                self.assertEqual(expression.sql(dialect), "DATE_TRUNC('WEEK', CAST(d AS DATE))")
+                self.assertEqual(
+                    expression.sql("bigquery"), "DATE_TRUNC(CAST(d AS DATE), WEEK(MONDAY))"
+                )
+                self.assertEqual(
+                    expression.sql("duckdb"),
+                    "CAST(DATE_TRUNC('WEEK', CAST(d AS DATE)) AS DATE)",
+                )
+
     def test_ddl(self):
         self.validate_all(
             "CREATE TABLE test WITH (FORMAT = 'PARQUET') AS SELECT 1",

@@ -183,6 +183,59 @@ class TestTrino(Validator):
             with self.assertRaises(UnsupportedError):
                 parse_one(sql, read="trino").sql("bigquery", unsupported_level=ErrorLevel.RAISE)
 
+    def test_date_trunc_week(self):
+        # Trino's weeks start on Monday, whereas a bare WEEK means WEEK(SUNDAY) in BigQuery
+        self.validate_all(
+            "SELECT DATE_TRUNC('WEEK', ts)",
+            write={
+                "athena": "SELECT DATE_TRUNC('WEEK', ts)",
+                "bigquery": "SELECT TIMESTAMP_TRUNC(ts, WEEK(MONDAY))",
+                "duckdb": "SELECT DATE_TRUNC('WEEK', ts)",
+                "postgres": "SELECT DATE_TRUNC('WEEK', ts)",
+                "presto": "SELECT DATE_TRUNC('WEEK', ts)",
+                "snowflake": "SELECT DATE_TRUNC('WEEK', ts)",
+                "spark": "SELECT DATE_TRUNC('WEEK', ts)",
+                "trino": "SELECT DATE_TRUNC('WEEK', ts)",
+            },
+        )
+        self.validate_all(
+            "SELECT DATE_TRUNC('week', CAST(d AS DATE))",
+            write={
+                "athena": "SELECT DATE_TRUNC('WEEK', CAST(d AS DATE))",
+                "bigquery": "SELECT DATE_TRUNC(CAST(d AS DATE), WEEK(MONDAY))",
+                "duckdb": "SELECT CAST(DATE_TRUNC('WEEK', CAST(d AS DATE)) AS DATE)",
+                "postgres": "SELECT DATE_TRUNC('WEEK', CAST(d AS DATE))",
+                "presto": "SELECT DATE_TRUNC('WEEK', CAST(d AS DATE))",
+                "snowflake": "SELECT DATE_TRUNC('WEEK', CAST(d AS DATE))",
+                "trino": "SELECT DATE_TRUNC('WEEK', CAST(d AS DATE))",
+                "tsql": "SELECT DATETRUNC(ISO_WEEK, CAST(d AS DATE))",
+            },
+        )
+
+        for dialect in ("athena", "presto", "trino"):
+            with self.subTest(dialect):
+                self.assertEqual(
+                    parse_one("DATE_TRUNC('WEEK', ts)", read=dialect).args["unit"],
+                    exp.WeekStart(this=exp.var("MONDAY")),
+                )
+                self.assertEqual(
+                    parse_one("DATE_TRUNC('WEEK', CAST(d AS DATE))", read=dialect).args["unit"],
+                    exp.WeekStart(this=exp.var("MONDAY")),
+                )
+
+        # Units other than WEEK are left alone
+        for unit in ("HOUR", "DAY", "MONTH", "QUARTER", "YEAR"):
+            with self.subTest(unit):
+                parsed_unit = parse_one(f"DATE_TRUNC('{unit}', ts)", read="trino").args["unit"]
+                self.assertNotIsInstance(parsed_unit, exp.WeekStart)
+                self.assertEqual(parsed_unit.name, unit)
+
+        # Truncating a DATE to a week keeps the DATE type
+        annotated = annotate_types(
+            parse_one("DATE_TRUNC('WEEK', CAST(d AS DATE))", read="trino"), dialect="trino"
+        )
+        self.assertTrue(annotated.is_type(exp.DType.DATE))
+
     def test_approx_percentile(self):
         for weight in ("1", "w", "w + 1"):
             for quantile in ("0.5", "ARRAY[0.25, 0.5]"):

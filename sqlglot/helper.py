@@ -485,7 +485,12 @@ DATE_UNITS = {"day", "week", "month", "quarter", "year", "year_month"}
 
 
 def is_date_unit(expression: Expr | None) -> bool:
-    return expression is not None and expression.name.lower() in DATE_UNITS
+    from sqlglot.expressions import WeekStart
+
+    # WEEK(<day>) is a week unit, whatever day starts the week
+    return expression is not None and (
+        isinstance(expression, WeekStart) or expression.name.lower() in DATE_UNITS
+    )
 
 
 K = t.TypeVar("K")
